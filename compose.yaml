@@ -1,0 +1,56 @@
+# Local run: docker compose up --build, then open http://localhost:8080
+# Same shape as Open Cloud: the app connects as a runtime role with no CREATE rights,
+# and S3 is SeaweedFS (what Open S3 runs). All passwords here are local-only placeholders.
+services:
+  app:
+    build: .
+    ports: ["8080:8080"]
+    read_only: true
+    tmpfs: [/tmp]
+    environment:
+      PORT: "8080"
+      DATABASE_URL: postgresql://app_runtime:listsnap-local@db:5432/app
+      S3_ENDPOINT: http://storage:8333
+      S3_ACCESS_KEY_ID: listsnap-local
+      S3_SECRET_ACCESS_KEY: listsnap-local-secret
+      S3_BUCKET: listsnap
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-openai/gpt-4o-mini}
+      AI_BASE_URL: ${AI_BASE_URL:-}
+    depends_on:
+      db: {condition: service_healthy}
+      storage: {condition: service_healthy}
+
+  db:
+    image: postgres:17-alpine
+    environment: {POSTGRES_USER: app, POSTGRES_DB: app, POSTGRES_PASSWORD: listsnap-local}
+    volumes:
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./db/local-runtime-role.sql:/docker-entrypoint-initdb.d/02-runtime-role.sql:ro
+      - pgdata:/var/lib/postgresql/data
+    healthcheck: {test: [CMD-SHELL, "pg_isready -U app -d app"], interval: 2s, retries: 30}
+
+  storage:
+    image: chrislusf/seaweedfs:4.48
+    # Start SeaweedFS, then create the bucket once (like "Create bucket" in the console).
+    entrypoint: [sh, -c]
+    command:
+      - |
+        weed server -dir=/data -s3 -s3.port=8333 -s3.config=/etc/seaweedfs/s3.json &
+        until wget -q -O /dev/null http://127.0.0.1:8333/healthz; do sleep 1; done
+        echo 's3.bucket.create -name listsnap' | weed shell && touch /tmp/ready
+        wait
+    configs: [{source: s3, target: /etc/seaweedfs/s3.json}]
+    volumes: [s3data:/data]
+    healthcheck: {test: [CMD-SHELL, "test -f /tmp/ready"], interval: 2s, retries: 60}
+
+configs:
+  s3:
+    content: |
+      {"identities": [{"name": "listsnap-local",
+        "credentials": [{"accessKey": "listsnap-local", "secretKey": "listsnap-local-secret"}],
+        "actions": ["Read:listsnap", "Write:listsnap", "List:listsnap", "Tagging:listsnap"]}]}
+
+volumes:
+  pgdata:
+  s3data:

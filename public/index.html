@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ListSnap</title>
+  <meta name="description" content="Write a messy list or snap a photo of one. AI turns it into a to-do list.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%233b5bfd'/><path d='M9 16.5l4.5 4.5L23 11.5' stroke='white' stroke-width='3.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main>
+    <header>
+      <div class="brand"><span class="mark" aria-hidden="true"></span>ListSnap</div>
+      <p class="tagline">Write it messy or snap a photo. Get a clean to-do list.</p>
+      <p id="status" class="status" aria-live="polite"></p>
+    </header>
+
+    <form id="composer" class="card composer">
+      <label for="text" class="sr-only">Your list</label>
+      <textarea id="text" maxlength="4000" rows="5" placeholder="milk, eggs, call the dentist&#10;- fix bike tire&#10;1. book flights for june"></textarea>
+      <div class="actions">
+        <button type="submit" id="make" class="primary">Make my list</button>
+        <label class="secondary" id="snap">
+          <input type="file" id="photo" accept="image/jpeg,image/png,image/webp,image/*" hidden>
+          Snap a photo
+        </label>
+      </div>
+      <p id="error" class="error" role="alert"></p>
+    </form>
+
+    <section id="lists" aria-label="Your lists"></section>
+  </main>
+
+  <template id="list-tpl">
+    <article class="card list">
+      <div class="list-head">
+        <a class="thumb" target="_blank" rel="noopener" hidden><img alt="Photo this list came from"></a>
+        <div class="list-meta">
+          <h2></h2>
+          <p class="progress"></p>
+        </div>
+        <button class="icon delete-list" title="Delete list" aria-label="Delete list">&times;</button>
+      </div>
+      <ul class="items"></ul>
+    </article>
+  </template>
+
+  <template id="item-tpl">
+    <li class="item">
+      <label class="check"><input type="checkbox"><span aria-hidden="true"></span></label>
+      <input class="text" maxlength="200" aria-label="To-do">
+      <button class="icon delete-item" title="Delete" aria-label="Delete item">&times;</button>
+    </li>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
