@@ -4,6 +4,7 @@ import pg from "pg";
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { secret, aiConfig } from "./src/config.js";
 import { makeList } from "./src/ai.js";
+import { errorHandler } from "./src/errors.js";
 import { MAX_TEXT, MAX_IMAGE, MAX_ITEM_TEXT, MAX_ITEMS, imageType, rateLimiter } from "./src/limits.js";
 
 // Settings are read once at startup. Open Cloud restarts the app whenever a database,
@@ -96,12 +97,7 @@ app.delete("/api/lists/:id", needDb, async (req, res) => {
   res.sendStatus(204);
 });
 
-app.use((err, req, res, next) => {
-  if (err.type === "entity.too.large") return res.status(413).json({ error: "That's too big. Photos up to 5 MB." });
-  if (err.code === "42P01") return res.status(503).json({ error: "The database has no tables yet. Run db/schema.sql (see the README)." });
-  console.error(JSON.stringify({ event: "error", path: req.path, message: err.message }));
-  res.status(500).json({ error: err.message.startsWith("AI call failed") ? "The AI didn't answer. Try again." : "Something went wrong." });
-});
+app.use(errorHandler);
 
 async function saveList({ title, items }, photoKey) {
   const c = await db.connect();
